@@ -2,112 +2,94 @@ import pygame
 import sys
 from snake import Snake
 from food import Food
+import random
 
-# Screen dimensions
-WIDTH, HEIGHT = 640, 480
-GRID_SIZE = 20
-GRID_WIDTH = WIDTH // GRID_SIZE
-GRID_HEIGHT = HEIGHT // GRID_SIZE
+# Inicializando o Pygame
+pygame.init()
 
-# Colors
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
-RED = (255, 0, 0)
+# Configurações da tela
+width, height = 600, 400
+screen = pygame.display.set_mode((width, height))
+pygame.display.set_caption("Jogo da Cobrinha")
 
-class Game:
-    def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("Snake Game")
-        self.clock = pygame.time.Clock()
-        self.font = pygame.font.Font(None, 36)
-        self.snake = Snake(GRID_WIDTH // 2, GRID_HEIGHT // 2)
-        self.food = Food(GRID_WIDTH, GRID_HEIGHT)
-        self.score = 0
-        self.game_over = False
+# Cores
+white = (255, 255, 255)
+black = (0, 0, 0)
+red = (255, 0, 0)
+green = (0, 255, 0)
 
-        # Adiciona o mixer e carrega o som
-        pygame.mixer.init()
-        self.eat_sound = pygame.mixer.Sound("Sound.mp3")
+# Clock para controlar a velocidade do jogo
+clock = pygame.time.Clock()
+snake_speed = 15
 
-    def run(self):
-        while not self.game_over:
-            self.handle_events()
-            self.update()
-            self.draw()
-            self.clock.tick(10) # Game speed
+# Tamanho do bloco
+snake_block = 10
 
-        self.show_game_over_screen()
-        pygame.quit()
-        sys.exit()
+font_style = pygame.font.SysFont("bahnschrift", 25)
+score_font = pygame.font.SysFont("comicsansms", 35)
 
-    def handle_events(self):
+def Your_score(score):
+    value = score_font.render("Sua Pontuação: " + str(score), True, green)
+    screen.blit(value, [0, 0])
+
+def message(msg, color):
+    mesg = font_style.render(msg, True, color)
+    screen.blit(mesg, [width / 6, height / 3])
+
+def gameLoop():
+    game_over = False
+    game_close = False
+
+    snake = Snake(width / 2, height / 2, snake_block)
+    food = Food(width, height, snake_block)
+
+    while not game_over:
+
+        while game_close:
+            screen.fill(black)
+            message("Você Perdeu! Pressione Q-Sair ou C-Jogar Novamente", red)
+            Your_score(snake.length - 1)
+            pygame.display.update()
+
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_q:
+                        game_over = True
+                        game_close = False
+                    if event.key == pygame.K_c:
+                        gameLoop()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                self.game_over = True
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    self.snake.change_direction("UP")
-                elif event.key == pygame.K_DOWN:
-                    self.snake.change_direction("DOWN")
-                elif event.key == pygame.K_LEFT:
-                    self.snake.change_direction("LEFT")
+                game_over = True
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    snake.change_direction('LEFT')
                 elif event.key == pygame.K_RIGHT:
-                    self.snake.change_direction("RIGHT")
+                    snake.change_direction('RIGHT')
+                elif event.key == pygame.K_UP:
+                    snake.change_direction('UP')
+                elif event.key == pygame.K_DOWN:
+                    snake.change_direction('DOWN')
 
-    def update(self):
-        self.snake.move()
+        if snake.move(width, height):
+            game_close = True
 
-        # Check for collision with food
-        if self.snake.get_head_position() == self.food.position:
-            self.snake.grow()
-            self.food.randomize_position(self.snake.body)
-            self.score += 1
-            self.eat_sound.play()  # Toca o som quando pega a comida
+        screen.fill(black)
+        food.draw(screen, pygame)
+        snake.draw(screen, pygame, white)
+        Your_score(snake.length - 1)
 
-        # Check for collision with walls
-        head_x, head_y = self.snake.get_head_position()
-        if not (0 <= head_x < GRID_WIDTH and 0 <= head_y < GRID_HEIGHT):
-            self.game_over = True
+        pygame.display.update()
 
-        # Check for collision with self
-        if self.snake.collides_with_self():
-            self.game_over = True
+        if snake.get_head_position() == food.position:
+            food.respawn(width, height)
+            snake.grow()
 
-    def draw(self):
-        self.screen.fill(BLACK)
-        self.snake.draw(self.screen, GRID_SIZE)
-        self.food.draw(self.screen, GRID_SIZE)
-        self.draw_score()
-        pygame.display.flip()
+        clock.tick(snake_speed)
 
-    def draw_score(self):
-        score_text = self.font.render(f"Score: {self.score}", True, WHITE)
-        self.screen.blit(score_text, (10, 10))
-
-    def show_game_over_screen(self):
-        self.screen.fill(BLACK)
-        game_over_text = self.font.render("Game Over", True, RED)
-        score_text = self.font.render(f"Final Score: {self.score}", True, WHITE)
-        restart_text = self.font.render("Press any key to play again", True, WHITE)
-
-        self.screen.blit(game_over_text, (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 4))
-        self.screen.blit(score_text, (WIDTH // 2 - score_text.get_width() // 2, HEIGHT // 2))
-        self.screen.blit(restart_text, (WIDTH // 2 - restart_text.get_width() // 2, HEIGHT * 3 // 4))
-        pygame.display.flip()
-
-        waiting_for_key = True
-        while waiting_for_key:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    waiting_for_key = False
-                    self.game_over = True # To exit the main loop
-                if event.type == pygame.KEYDOWN:
-                    waiting_for_key = False
-                    game = Game()
-                    game.run()
+    pygame.quit()
+    sys.exit()
 
 if __name__ == "__main__":
-    game = Game()
-    game.run()
+    gameLoop()

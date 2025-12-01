@@ -1,52 +1,54 @@
-import pygame
-
 class Snake:
-    def __init__(self, x, y):
-        self.body = [(x, y)]
-        self.direction = "RIGHT"
-        self.grow_pending = False
-
-    def get_head_position(self):
-        return self.body[0]
+    def __init__(self, x, y, block_size):
+        self.block_size = block_size
+        self.x_change = 0
+        self.y_change = 0
+        self.head = [x, y]
+        self.body = [self.head]
+        self.length = 1
+        self.direction = ''
 
     def change_direction(self, new_direction):
-        if new_direction == "UP" and self.direction != "DOWN":
+        if new_direction == 'LEFT' and self.direction != 'RIGHT':
+            self.x_change = -self.block_size
+            self.y_change = 0
             self.direction = new_direction
-        elif new_direction == "DOWN" and self.direction != "UP":
+        elif new_direction == 'RIGHT' and self.direction != 'LEFT':
+            self.x_change = self.block_size
+            self.y_change = 0
             self.direction = new_direction
-        elif new_direction == "LEFT" and self.direction != "RIGHT":
+        elif new_direction == 'UP' and self.direction != 'DOWN':
+            self.y_change = -self.block_size
+            self.x_change = 0
             self.direction = new_direction
-        elif new_direction == "RIGHT" and self.direction != "LEFT":
+        elif new_direction == 'DOWN' and self.direction != 'UP':
+            self.y_change = self.block_size
+            self.x_change = 0
             self.direction = new_direction
 
-    def move(self):
-        head_x, head_y = self.get_head_position()
+    def move(self, width, height):
+        new_head = [self.head[0] + self.x_change, self.head[1] + self.y_change]
 
-        if self.direction == "UP":
-            head_y -= 1
-        elif self.direction == "DOWN":
-            head_y += 1
-        elif self.direction == "LEFT":
-            head_x -= 1
-        elif self.direction == "RIGHT":
-            head_x += 1
+        if new_head[0] >= width or new_head[0] < 0 or new_head[1] >= height or new_head[1] < 0:
+            return True  # Game Over
 
-        new_head = (head_x, head_y)
-        self.body.insert(0, new_head)
+        self.head = new_head
+        self.body.append(self.head)
+        if len(self.body) > self.length:
+            del self.body[0]
 
-        if self.grow_pending:
-            self.grow_pending = False
-        else:
-            self.body.pop()
+        for segment in self.body[:-1]:
+            if segment == self.head:
+                return True # Game Over
+
+        return False
 
     def grow(self):
-        self.grow_pending = True
+        self.length += 1
 
-    def collides_with_self(self):
-        return self.get_head_position() in self.body[1:]
-
-    def draw(self, screen, grid_size):
+    def draw(self, screen, pygame, color):
         for segment in self.body:
-            x, y = segment
-            rect = pygame.Rect(x * grid_size, y * grid_size, grid_size, grid_size)
-            pygame.draw.rect(screen, (0, 255, 0), rect)
+            pygame.draw.rect(screen, color, [segment[0], segment[1], self.block_size, self.block_size])
+
+    def get_head_position(self):
+        return self.head
